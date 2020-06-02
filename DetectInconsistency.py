@@ -71,7 +71,7 @@ def initialize(host_tree, parasite_tree, index):
     add_ancestor_descendent_relation(M)
     return M
 
-def createParentDict(H, P):
+def create_parent_dict(H, P):
     """
     :param host_tree:  host tree dictionary
     :param parasite_tree:  parasite tree dictionary
@@ -95,7 +95,7 @@ def One_Inconsistent_Recon(source_nodes, recon_graph, host_tree, parasite_tree):
     the reconciliation graph
     """
     index = build_index_dict(host_tree, parasite_tree)
-    parent = createParentDict(host_tree, parasite_tree)
+    parent = create_parent_dict(host_tree, parasite_tree)
     for source_node in source_nodes:
         if One_Inconsistent_Recon_Helper(source_node, recon_graph, host_tree, parasite_tree, index, parent)[0]:
             return True
@@ -122,20 +122,20 @@ def One_Inconsistent_Recon_Helper(mapping_node, recon_graph, host_tree, parasite
         if event_type == 'L':
             constraints = []
         else:
-            # if the node_mapping is not a leaf_mapping, we add the first relation
+            # if the node_mapping is not a leaf_mapping, we add the first constraint
             if event_type != 'C':
                 constraints.append(Constraint(States.BEFORE, index[parasite], index[host]))
-            # if the node_mapping is not a mapping onto the root of host tree, we add the second relation
+            # if the node_mapping is not a mapping onto the root of host tree, we add the second constraint
             if host_parent != 'Top':
                 constraints.append(Constraint(States.BEFORE, index[host_parent], index[parasite]))
             
-            # if event is a transfer, then we add two more temporal relations
+            # if event is a transfer, then we add two more temporal constraints
             if event_type == 'T':
                 # get the mapping for the right child which is the transferred child
                 right_child_parasite, right_child_host = mapping_child_2
-                # since a transfer event is horizontal, we have these two implied relations
+                # since a transfer event is horizontal, we have these two implied constraints
                 constraints.append(Constraint(States.BEFORE, index[parent[right_child_host]], index[parasite]))
-                # the second relation is only added if the right child mapping is not a leaf mapping
+                # the second constraint is only added if the right child mapping is not a leaf mapping
                 if recon_graph[mapping_child_2][0][0]!='C':
                     constraints.append(Constraint(States.BEFORE, index[right_child_parasite], index[host]))
  
@@ -180,13 +180,13 @@ def trickle_down(M, i, j):
     state = M[i][j] # this is only BEFORE or AFTER
     for node_1 in range(len(M)):
         # Implication 1: e.g. if node_1 > i > j, then node_1 > j
-        if M[node_1][i] == state:
+        if M[node_1][i] == state or M[node_1][i] == States.BOTHWAY: # BOTHWAY includes the two relations BEFORE and AFTER 
             if contradict(M[node_1][j], state):
                 return True
             M[node_1][j] = state
 
         # Implication 2: e.g. if i > j > node_1, then i > node_1
-        if M[j][node_1] == state:
+        if M[j][node_1] == state or M[j][node_1] == States.BOTHWAY:
             if contradict(M[i][node_1], state):
                 return True
             M[i][node_1] = state
@@ -194,12 +194,13 @@ def trickle_down(M, i, j):
         # M is a square matrix, so #row = #col
         for node_2 in range(len(M)):
             # Implication 3: e.g. if node_1 > i > j > node_2, then node_1 > node_2
-            if M[node_1][i] == state and M[j][node_2] == state:
+            if (M[node_1][i] == state or M[node_1][i] == States.BOTHWAY) \
+             and (M[j][node_2] == state or M[j][node_2] == States.BOTHWAY):
                 if contradict(M[node_1][node_2], state):
                     return True
                 M[node_1][node_2] = state
     return False
-    
+
 def add_constraint(event_matrix, constraint):
     state = constraint.state # can only be States.BEFORE in current implementation
     index_1 = constraint.index_1
